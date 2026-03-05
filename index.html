@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>炸金花</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&display=swap');
+
+  :root {
+    --gold: #f5c842;
+    --gold-dark: #c9993a;
+    --gold-light: #ffe98a;
+    --red: #e02020;
+    --red-dark: #a01010;
+    --green: #1a7c3e;
+    --green-light: #25a857;
+    --felt: #0d5c2e;
+    --felt-dark: #083d1e;
+    --felt-light: #156b38;
+    --chip-blue: #1a6bbf;
+    --chip-red: #bf1a1a;
+    --chip-green: #1abf4a;
+    --bg-dark: #0a2e18;
+    --card-bg: #fff;
+    --text-dark: #1a0a00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: radial-gradient(ellipse at center, #0f4a25 0%, #052210 100%);
+    min-height: 100vh;
+    overflow: hidden;
+    color: #fff;
+    user-select: none;
+  }
+
+  #game {
+    max-width: 430px;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Table felt texture */
+  #game::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      45deg, transparent, transparent 4px,
+      rgba(255,255,255,0.012) 4px, rgba(255,255,255,0.012) 8px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === HEADER === */
+  .header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+  }
+
+  .game-title {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f5c842, #ffe98a, #c9993a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    letter-spacing: 4px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+
+  .pot-display {
+    text-align: center;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(245,200,66,0.4);
+    border-radius: 20px;
+    padding: 4px 14px;
+  }
+
+  .pot-label { font-size: 10px; color: rgba(255,255,255,0.6); }
+  .pot-amount { font-size: 18px; font-weight: 700; color: var(--gold); }
+
+  .player-info {
+    text-align: right;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 12px;
+  }
+
+  .player-name { font-size: 10px; color: rgba(255,255,255,0.7); }
+  .player-chips { font-size: 16px; font-weight: 700; color: var(--gold-light); }
+
+  /* === OPPONENTS AREA === */
+  .opponents-area {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .opponent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 120px;
+  }
+
+  .opp-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 3px 8px;
+    width: 100%;
+  }
+
+  .opp-name { font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 700; }
+  .opp-chips { font-size: 12px; color: var(--gold); }
+  .opp-bet { font-size: 10px; color: #4dff4d; min-height: 14px; }
+  .opp-status { font-size: 10px; min-height: 14px; }
+
+  .opp-cards {
+    display: flex;
+    gap: 2px;
+    position: relative;
+  }
+
+  /* Mini card back for opponents */
+  .mini-card {
+    width: 26px;
+    height: 38px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: linear-gradient(135deg, #1a3a8c 0%, #0d1f5c 50%, #1a3a8c 100%);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mini-card::after {
+    content: '🂠';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    opacity: 0.3;
+  }
+
+  .mini-card-pattern {
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+      45deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 2px,
+      transparent 2px, transparent 6px
+    );
+  }
+
+  /* Revealed opponent card */
+  .mini-card.revealed {
+    background: white;
+    color: var(--text-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .mini-card.revealed.red { color: var(--red); }
+  .mini-card.revealed::after { content: none; }
+  .mini-card.revealed .mini-card-pattern { display: none; }
+
+  /* === CENTER TABLE === */
+  .center-table {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .game-message {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(245,200,66,0.8), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 2px;
+    min-height: 28px;
+    text-align: center;
+    animation: msgPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes msgPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+  }
+
+  /* Chips on table */
+  .table-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .chip {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 900;
+    color: white;
+    border: 3px solid rgba(255,255,255,0.3);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.3);
+    position: relative;
+  }
+
+  .chip::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,0.3);
+  }
+
+  .chip-5  { background: radial-gradient(circle, #3a8c3a, #1a5c1a); }
+  .chip-10 { background: radial-gradient(circle, #3a5c8c, #1a2c5c); }
+
+  /* === PLAYER HAND === */
+  .player-area {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px 8px;
+  }
+
+  .hand-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 2px;
+  }
+
+  .hand-type-badge {
+    background: linear-gradient(135deg, rgba(245,200,66,0.2), rgba(245,200,66,0.05));
+    border: 1px solid rgba(245,200,66,0.5);
+    border-radius: 16px;
+    padding: 3px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold-light);
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+  }
+
+  .player-cards {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  /* === PLAYING CARD === */
+  .card {
+    width: 72px;
+    height: 106px;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .card.hidden {
+    background: linear-gradient(135deg, #1a3a8c 0%, #0d1f5c 50%, #1a3a8c 100%);
+  }
+
+  .card.hidden .card-back-pattern {
+    display: block;
+  }
+
+  .card-back-pattern {
+    display: none;
+    position: absolute;
+    inset: 4px;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 4px;
+    background: repeating-linear-gradient(
+      45deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 3px,
+      transparent 3px, transparent 9px
+    );
+  }
+
+  .card.red .rank, .card.red .suit { color: var(--red); }
+  .card.black .rank, .card.black .suit { color: #111; }
+
+  .rank {
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+    font-family: 'Noto Serif SC', serif;
+  }
+
+  .suit {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .card-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+  }
+
+  .card-corner-br {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transform: rotate(180deg);
+  }
+
+  .card:hover { transform: translateY(-6px) rotate(-2deg); }
+  .card.selected { transform: translateY(-12px); box-shadow: 0 12px 24px rgba(245,200,66,0.5), 0 6px 12px rgba(0,0,0,0.4); }
+
+  /* Card deal animation */
+  @keyframes dealCard {
+    from { transform: translateY(-200px) rotate(-15deg) scale(0.5); opacity: 0; }
+    to { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+  }
+
+  .card.deal-anim { animation: dealCard 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  .card:nth-child(1).deal-anim { animation-delay: 0.1s; }
+  .card:nth-child(2).deal-anim { animation-delay: 0.25s; }
+  .card:nth-child(3).deal-anim { animation-delay: 0.4s; }
+
+  /* === ACTION BUTTONS === */
+  .actions {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px 12px;
+    justify-content: center;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 24px;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 10px 18px;
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 1px;
+    min-width: 70px;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .btn:active::after { opacity: 1; }
+  .btn:active { transform: scale(0.96); }
+
+  .btn-look {
+    background: linear-gradient(135deg, #2a5c8c, #1a3c6c);
+    color: white;
+    border: 1px solid rgba(100,160,255,0.4);
+    box-shadow: 0 4px 12px rgba(0,0,50,0.4);
+  }
+
+  .btn-follow {
+    background: linear-gradient(135deg, #1a7c3e, #0e4e26);
+    color: white;
+    border: 1px solid rgba(100,255,150,0.3);
+    box-shadow: 0 4px 12px rgba(0,50,20,0.4);
+  }
+
+  .btn-raise {
+    background: linear-gradient(135deg, #c9993a, #8c6010);
+    color: white;
+    border: 1px solid rgba(255,220,100,0.4);
+    box-shadow: 0 4px 12px rgba(80,50,0,0.4);
+  }
+
+  .btn-fold {
+    background: rgba(80,10,10,0.6);
+    color: rgba(255,160,160,0.7);
+    border: 1px solid rgba(180,60,60,0.25);
+    box-shadow: none;
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+
+  .btn-compare {
+    background: linear-gradient(135deg, #7c1a7c, #4e0e4e);
+    color: white;
+    border: 1px solid rgba(255,100,255,0.3);
+    box-shadow: 0 4px 12px rgba(80,0,80,0.4);
+  }
+
+  .btn-new {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: var(--bg-dark);
+    border: 1px solid rgba(255,240,150,0.4);
+    box-shadow: 0 4px 12px rgba(200,150,0,0.4);
+    font-size: 16px;
+    padding: 12px 32px;
+  }
+
+  .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* Bet selector */
+  .bet-selector {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .bet-chip {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    font-size: 12px;
+    color: white;
+    position: relative;
+    transition: transform 0.15s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  .bet-chip::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(255,255,255,0.35);
+  }
+
+  .bet-chip:active { transform: scale(0.9); }
+  .bet-chip.active { transform: scale(1.1); box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,0.5); }
+
+  .bc-5  { background: radial-gradient(circle at 35% 35%, #5cbc5c, #1a6c1a); }
+  .bc-10 { background: radial-gradient(circle at 35% 35%, #5c8ccc, #1a3c8c); }
+
+  /* === RESULT OVERLAY === */
+  #result-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    gap: 20px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #result-overlay.hidden { display: none; }
+
+  .result-box {
+    background: linear-gradient(135deg, #1a3020, #0a1a10);
+    border: 2px solid var(--gold);
+    border-radius: 20px;
+    padding: 24px 36px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(245,200,66,0.3), 0 20px 60px rgba(0,0,0,0.8);
+    animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes resultPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .result-title {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+  }
+
+  .result-title.win {
+    background: linear-gradient(135deg, #f5c842, #ffe98a, #c9993a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(245,200,66,0.8));
+  }
+
+  .result-title.lose { color: #ff5555; text-shadow: 0 0 10px rgba(255,50,50,0.5); }
+  .result-title.draw { color: #aaaaaa; }
+
+  .result-detail { font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+  .result-amount { font-size: 26px; font-weight: 700; color: var(--gold); }
+
+  /* All hands display in result */
+  .result-hands {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .result-hand {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .result-hand.winner { border-color: var(--gold); background: rgba(245,200,66,0.1); }
+  .result-hand-name { font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+  .result-hand-type { font-size: 13px; color: var(--gold-light); font-weight: 700; }
+  .result-mini-cards { display: flex; gap: 2px; margin-top: 5px; justify-content: center; }
+
+  /* Coin rain animation */
+  .coin {
+    position: absolute;
+    font-size: 20px;
+    animation: coinFall linear both;
+    pointer-events: none;
+    z-index: 99;
+  }
+
+  @keyframes coinFall {
+    0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Current bet display */
+  .current-bet-display {
+    font-size: 13px;
+    color: var(--gold-light);
+    text-align: center;
+  }
+
+  /* Turn indicator */
+  .turn-indicator {
+    font-size: 12px;
+    padding: 3px 12px;
+    background: rgba(245,200,66,0.15);
+    border: 1px solid rgba(245,200,66,0.3);
+    border-radius: 12px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  /* Blind badge */
+  .blind-badge {
+    font-size: 10px;
+    background: rgba(245,200,66,0.2);
+    border: 1px solid rgba(245,200,66,0.4);
+    border-radius: 8px;
+    padding: 1px 5px;
+    color: var(--gold-light);
+    margin-left: 4px;
+  }
+
+  /* Folded player style */
+  .opponent.folded .opp-cards .mini-card { opacity: 0.35; filter: grayscale(0.8); }
+  .opponent.folded .opp-info { opacity: 0.4; }
+
+  /* Log area */
+  .log-area {
+    position: relative;
+    z-index: 5;
+    padding: 0 12px;
+    max-height: 44px;
+    overflow: hidden;
+  }
+
+  .log-item {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .log-item .highlight { color: var(--gold-light); }
+
+  /* Decorative border around table */
+  .table-border {
+    position: absolute;
+    left: 10px; right: 10px;
+    top: 100px; bottom: 200px;
+    border: 2px solid rgba(245,200,66,0.12);
+    border-radius: 50% / 20%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* === RESPONSIVE adjustments === */
+  @media (max-height: 700px) {
+    .card { width: 62px; height: 90px; }
+    .rank { font-size: 17px; }
+    .suit { font-size: 15px; }
+    .card-center { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="table-border"></div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="game-title">炸金花</div>
+    <div class="pot-display">
+      <div class="pot-label">底池</div>
+      <div class="pot-amount" id="pot-amount">0</div>
+    </div>
+    <div class="player-info">
+      <div class="player-name">我的筹码</div>
+      <div class="player-chips" id="my-chips">1000</div>
+    </div>
+  </div>
+
+  <!-- OPPONENTS -->
+  <div class="opponents-area" id="opponents-area"></div>
+
+  <!-- LOG -->
+  <div class="log-area">
+    <div class="log-item" id="game-log">等待开始游戏...</div>
+  </div>
+
+  <!-- CENTER TABLE -->
+  <div class="center-table">
+    <div class="game-message" id="game-message">准备好了吗？</div>
+    <div class="table-chips" id="table-chips"></div>
+    <div class="turn-indicator" id="turn-indicator" style="display:none"></div>
+  </div>
+
+  <!-- PLAYER HAND -->
+  <div class="player-area">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="hand-label">您的手牌</div>
+      <div class="hand-type-badge" id="hand-type-badge">—</div>
+    </div>
+    <div class="player-cards" id="player-cards"></div>
+
+
+    <!-- ACTIONS -->
+    <div class="actions" id="actions">
+      <button class="btn btn-new" onclick="startGame()">开始游戏</button>
+    </div>
+  </div>
+
+  <!-- RESULT OVERLAY -->
+  <div id="result-overlay" class="hidden"></div>
+</div>
+
+<script>
+// ==============================
+// GAME STATE
+// ==============================
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const RANK_VAL = {2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13,A:14};
+const HAND_RANKS = {
+  '豹子': 6, '同花顺': 5, '同花': 4, '顺子': 3, '对子': 2, '散牌': 1
+};
+
+const OPPONENTS = [
+  { id: 0, name: '张三', chips: 1000, isAI: true },
+  { id: 1, name: '李四', chips: 1000, isAI: true },
+  { id: 2, name: '王五', chips: 1000, isAI: true },
+];
+
+let state = {
+  deck: [],
+  phase: 'idle',
+  pot: 0,
+  currentBet: 0,
+  baseBet: 5,
+  selectedBet: 5,
+  playerChips: 1000,
+  playerCards: [],
+  playerBet: 0,
+  playerFolded: false,
+  playerLooked: false,
+  opponents: [],
+  roundNum: 0,
+  betRound: 0,   // 跟注轮次，满一圈后可摊牌
+  wasOpened: false, // 是否以开牌方式结束
+  logs: [],
+  aiTimeout: null,
+};
+
+const MAX_BET = 10;   // 单次加注上限
+const POT_CAP = 400;  // 三人同时时底池封顶
+
+// ==============================
+// DECK UTILS
+// ==============================
+function createDeck() {
+  let d = [];
+  for (let s of SUITS) for (let r of RANKS) d.push({suit:s, rank:r, val:RANK_VAL[r]});
+  for (let i = d.length-1; i > 0; i--) {
+    let j = Math.floor(Math.random()*(i+1));
+    [d[i],d[j]]=[d[j],d[i]];
+  }
+  return d;
+}
+
+function dealCards(deck, n) {
+  let hand = [];
+  for (let i=0;i<n;i++) hand.push(deck.pop());
+  return hand;
+}
+
+// ==============================
+// HAND EVALUATION
+// ==============================
+function evaluateHand(cards) {
+  const vals = cards.map(c=>c.val).sort((a,b)=>b-a);
+  const suits = cards.map(c=>c.suit);
+  const isFlush = suits.every(s=>s===suits[0]);
+  const isStraight = checkStraight(vals);
+  const counts = {};
+  vals.forEach(v=>counts[v]=(counts[v]||0)+1);
+  const countVals = Object.values(counts).sort((a,b)=>b-a);
+  const isPair = countVals[0]===2;
+  const isTriple = countVals[0]===3;
+
+  let type, score;
+  if (isTriple) {
+    type = '豹子';
+    score = [6, vals[0]];
+  } else if (isFlush && isStraight) {
+    type = '同花顺';
+    score = [5, isStraight];
+  } else if (isFlush) {
+    type = '同花';
+    score = [4, ...vals];
+  } else if (isStraight) {
+    type = '顺子';
+    score = [3, isStraight];
+  } else if (isPair) {
+    type = '对子';
+    const pairVal = +Object.keys(counts).find(k=>counts[k]===2);
+    const kicker = +Object.keys(counts).find(k=>counts[k]===1);
+    score = [2, pairVal, kicker];
+  } else {
+    type = '散牌';
+    score = [1, ...vals];
+  }
+  return { type, score };
+}
+
+function checkStraight(vals) {
+  // A-2-3 special case
+  if (vals[0]===14 && vals[1]===3 && vals[2]===2) return 3;
+  if (vals[0]-vals[1]===1 && vals[1]-vals[2]===1) return vals[0];
+  return 0;
+}
+
+function compareHands(h1, h2) {
+  for (let i=0;i<Math.max(h1.score.length,h2.score.length);i++) {
+    const a=h1.score[i]||0, b=h2.score[i]||0;
+    if (a>b) return 1;
+    if (a<b) return -1;
+  }
+  return 0;
+}
+
+// ==============================
+// RENDERING
+// ==============================
+function suitColor(suit) {
+  return (suit==='♥'||suit==='♦') ? 'red' : 'black';
+}
+
+function renderCard(card, hidden=false, small=false, dealAnim=false) {
+  if (hidden) {
+    return `<div class="card hidden ${dealAnim?'deal-anim':''}">
+      <div class="card-back-pattern"></div>
+    </div>`;
+  }
+  const col = suitColor(card.suit);
+  const anim = dealAnim ? 'deal-anim' : '';
+  return `<div class="card ${col} ${anim}">
+    <div class="rank">${card.rank}</div>
+    <div class="suit">${card.suit}</div>
+    <div class="card-center">${card.suit}</div>
+    <div class="card-corner-br">
+      <div class="rank">${card.rank}</div>
+      <div class="suit">${card.suit}</div>
+    </div>
+  </div>`;
+}
+
+function renderMiniCard(card, hidden=true) {
+  if (hidden) {
+    return `<div class="mini-card"><div class="mini-card-pattern"></div></div>`;
+  }
+  const col = suitColor(card.suit);
+  return `<div class="mini-card revealed ${col}">${card.rank}<br>${card.suit}</div>`;
+}
+
+function renderOpponents() {
+  const area = document.getElementById('opponents-area');
+  area.innerHTML = state.opponents.map((opp, i) => {
+    const folded = opp.folded ? 'folded' : '';
+    const cards = opp.cards || [];
+    const revealed = opp.revealed || false;
+    const cardsHtml = cards.map(c => renderMiniCard(c, !revealed)).join('');
+    const statusColor = opp.folded ? 'color:#ff7777' : (opp.looked ? 'color:#77aaff' : 'color:#aaaaaa');
+    const statusText = opp.folded ? '已弃牌' : (opp.looked ? '已看牌' : '暗注');
+    const betText = opp.bet > 0 && !opp.folded ? `押: ${opp.bet}` : '';
+    return `<div class="opponent ${folded}">
+      <div class="opp-info">
+        <div class="opp-name">${opp.name}</div>
+        <div class="opp-chips">💰${opp.chips}</div>
+        <div class="opp-bet">${betText}</div>
+        <div class="opp-status" style="${statusColor}">${statusText}</div>
+      </div>
+      <div class="opp-cards">${cardsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPlayerCards(hidden=false, dealAnim=false) {
+  const area = document.getElementById('player-cards');
+  area.innerHTML = state.playerCards.map((c,i) => renderCard(c, hidden, false, dealAnim)).join('');
+}
+
+function renderPot() {
+  const totalActive = state.opponents.filter(o=>!o.folded).length + (state.playerFolded ? 0 : 1);
+  const capped = totalActive >= 3 && state.pot >= POT_CAP;
+  document.getElementById('pot-amount').textContent = state.pot + (capped ? ' 🔒' : '');
+  document.getElementById('my-chips').textContent = state.playerChips;
+}
+
+function renderHandType() {
+  const badge = document.getElementById('hand-type-badge');
+  if (state.playerCards.length === 3 && state.playerLooked) {
+    const ev = evaluateHand(state.playerCards);
+    badge.textContent = ev.type;
+    badge.style.color = ev.type === '豹子' ? '#ff4' : ev.type === '同花顺' ? '#f8f' : '';
+  } else {
+    badge.textContent = '—';
+  }
+}
+
+function renderTableChips() {
+  const area = document.getElementById('table-chips');
+  if (state.pot <= 0) { area.innerHTML=''; return; }
+  // Show visual chips based on pot
+  let remaining = state.pot;
+  let html = '';
+  const denom = [{v:10,c:'chip-10'},{v:5,c:'chip-5'}];
+  denom.forEach(d => {
+    let n = Math.min(Math.floor(remaining/d.v), 5);
+    for (let i=0;i<n;i++) html += `<div class="chip ${d.c}">${d.v}</div>`;
+    remaining -= n*d.v;
+  });
+  area.innerHTML = html;
+}
+
+function setActions(buttons) {
+  const area = document.getElementById('actions');
+  area.innerHTML = buttons.map(b => {
+    const disabled = b.disabled ? 'disabled' : '';
+    const onclick = b.disabled ? '' : `onclick="${b.onclick}"`;
+    return `<button class="btn btn-${b.type}" ${onclick} ${disabled}>${b.label}</button>`;
+  }).join('');
+}
+
+function setMessage(msg) {
+  document.getElementById('game-message').textContent = msg;
+}
+
+function addLog(msg) {
+  state.logs.unshift(msg);
+  if (state.logs.length > 3) state.logs.pop();
+  document.getElementById('game-log').innerHTML = state.logs.slice(0,2).join(' · ');
+}
+
+function setTurnIndicator(msg) {
+  const el = document.getElementById('turn-indicator');
+  if (msg) { el.style.display=''; el.textContent=msg; }
+  else el.style.display='none';
+}
+
+// ==============================
+// BET SELECTION
+// ==============================
+function selectBet(val) {
+  if (val > MAX_BET) return;
+  state.selectedBet = val;
+  document.querySelectorAll('.bet-chip').forEach(b => {
+    b.classList.toggle('active', +b.dataset.val === val);
+  });
+  document.querySelector('#bet-selector + .current-bet-display, #bet-display') && (document.getElementById('bet-display').textContent = `押注: ${val}`);
+}
+
+// ==============================
+// GAME FLOW
+// ==============================
+function startGame() {
+  clearTimeout(state.aiTimeout);
+  document.getElementById('result-overlay').classList.add('hidden');
+  document.querySelectorAll('.coin').forEach(c=>c.remove());
+
+  // Reset
+  state.deck = createDeck();
+  state.pot = 0;
+  state.currentBet = state.baseBet;
+  state.playerCards = dealCards(state.deck, 3);
+  state.playerBet = 0;
+  state.playerFolded = false;
+  state.playerLooked = false;
+  state.roundNum++;
+  state.betRound = 0;
+  state.wasOpened = false;
+  state.logs = [];
+
+  state.opponents = OPPONENTS.map(o => ({
+    ...o,
+    chips: o.chips,
+    cards: dealCards(state.deck, 3),
+    bet: 0,
+    folded: false,
+    looked: false,
+    revealed: false,
+    aiAction: null,
+  }));
+
+  // Ante
+  const ante = state.baseBet;
+  state.playerBet = ante;
+  state.playerChips -= ante;
+  state.opponents.forEach(o => { o.bet = ante; o.chips -= ante; });
+  state.pot = ante * 4;
+  state.currentBet = ante;
+
+  renderPlayerCards(true, true);
+  renderOpponents();
+  renderPot();
+  renderTableChips();
+  renderHandType();
+
+
+  setMessage('轮到您出牌');
+  setTurnIndicator('🂠 您尚未看牌（暗注）');
+  addLog(`第${state.roundNum}局开始，每人底注 ${ante}`);
+
+  updateActionButtons();
+}
+
+function lookCards() {
+  state.playerLooked = true;
+  renderPlayerCards(false, false);
+  renderHandType();
+  setTurnIndicator('👁 已看牌（明注加倍）');
+  addLog('您看了牌');
+  updateActionButtons();
+}
+
+function updateActionButtons() {
+  const bet = state.playerLooked ? state.currentBet * 2 : 5;
+  const activePlayers = state.opponents.filter(o=>!o.folded);
+  const totalActive = activePlayers.length + (state.playerFolded ? 0 : 1);
+  const potCapped = totalActive >= 3 && state.pot >= POT_CAP;
+
+  const canFollow = state.playerChips >= bet && !potCapped;
+
+  // 封顶且三人以上，直接全部开牌
+  if (potCapped) {
+    setMessage('底池封顶！全员开牌！');
+    setTimeout(() => {
+      state.wasOpened = true;
+      state.playerLooked = true;
+      renderPlayerCards(false);
+      renderHandType();
+      state.opponents.forEach(o => { if (!o.folded) o.revealed = true; });
+      renderOpponents();
+      setTimeout(() => endRound(), 800);
+    }, 600);
+    setActions([]);
+    return;
+  }
+
+  let buttons = [];
+
+  const twoLeft = activePlayers.length === 1;
+
+  if (!state.playerLooked) {
+    buttons.push({ type:'look', label:'看牌', onclick:'lookCards()' });
+  }
+
+  buttons.push({ type:'follow', label:`跟注 ${bet}`, onclick:'playerFollow()', disabled: !canFollow });
+
+  if (twoLeft) {
+    if (state.playerLooked) {
+      buttons.push({ type:'compare', label:'比牌', onclick:`playerCompare(${activePlayers[0].id})` });
+    } else {
+      buttons.push({ type:'compare', label:'开牌', onclick:`playerOpen(${activePlayers[0].id})` });
+    }
+  } else if (!state.playerLooked && activePlayers.length > 1 && state.betRound >= 1) {
+    buttons.push({ type:'compare', label:'开牌', onclick:'playerOpenAll()' });
+  }
+
+  buttons.push({ type:'fold', label:'弃牌', onclick:'playerFold()' });
+
+  setActions(buttons);
+}
+
+function playerFollow() {
+  if (state.playerFolded) return;
+  const activePlayers = state.opponents.filter(o=>!o.folded);
+  const totalActive = activePlayers.length + 1;
+  if (totalActive >= 3 && state.pot >= POT_CAP) { addLog('底池已封顶 400！'); return; }
+  const bet = state.playerLooked ? state.currentBet * 2 : 5;
+  if (state.playerChips < bet) { addLog('筹码不足！'); return; }
+  state.playerChips -= bet;
+  state.playerBet += bet;
+  state.pot = Math.min(state.pot + bet, totalActive >= 3 ? POT_CAP : Infinity);
+  state.betRound++;
+  addLog(`您跟注 ${bet}`);
+  renderPot();
+  renderTableChips();
+  runAITurns();
+}
+
+
+function playerFold() {
+  if (state.playerFolded) return;
+  // 用界面确认代替 confirm()，避免移动端 WebView 拦截
+  const area = document.getElementById('actions');
+  area.innerHTML = `
+    <span style="font-size:13px;color:rgba(255,255,255,0.7)">确认弃牌？</span>
+    <button class="btn btn-fold" onclick="confirmFold()" style="font-size:14px;padding:9px 18px;background:linear-gradient(135deg,#8c1a1a,#5c0a0a);color:#fff">确认弃牌</button>
+    <button class="btn btn-follow" onclick="updateActionButtons()" style="font-size:14px;padding:9px 18px">取消</button>
+  `;
+}
+
+function confirmFold() {
+  state.playerFolded = true;
+  addLog('您已弃牌');
+
+  // AI wins by default
+  const remaining = state.opponents.filter(o=>!o.folded);
+  if (remaining.length === 0) return;
+
+  setTimeout(() => {
+    // Find best AI hand
+    let winner = remaining[0];
+    for (let o of remaining.slice(1)) {
+      const r = compareHands(evaluateHand(o.cards), evaluateHand(winner.cards));
+      if (r > 0) winner = o;
+    }
+    showResult(null, winner, state.opponents);
+  }, 500);
+}
+
+function playerCompare(oppId) {
+  const opp = state.opponents.find(o=>o.id===oppId);
+  if (!opp || opp.folded) return;
+  const compareCost = state.playerLooked ? state.currentBet * 2 : 5;
+  if (state.playerChips < compareCost) { addLog('筹码不足比牌'); return; }
+  state.playerChips -= compareCost;
+  state.pot += compareCost;
+  renderPot();
+
+  const playerEv = evaluateHand(state.playerCards);
+  const oppEv = evaluateHand(opp.cards);
+  const result = compareHands(playerEv, oppEv);
+
+  opp.revealed = true;
+  addLog(`与${opp.name}比牌！`);
+
+  setTimeout(() => {
+    if (result >= 0) {
+      // Player wins
+      opp.folded = true;
+      addLog(`您的${playerEv.type}胜过${opp.name}的${oppEv.type}！`);
+      const remaining = state.opponents.filter(o=>!o.folded);
+      if (remaining.length === 0) {
+        showResult('player', null, state.opponents);
+      } else {
+        renderOpponents();
+        updateActionButtons();
+      }
+    } else {
+      // Player lost compare
+      showResult(null, opp, state.opponents);
+    }
+  }, 600);
+}
+
+// 未看牌开牌（免费摊牌，不额外收费）
+function playerOpen(oppId) {
+  const opp = state.opponents.find(o=>o.id===oppId);
+  if (!opp || opp.folded) return;
+
+  state.playerLooked = true;
+  state.wasOpened = true;
+  renderPlayerCards(false);
+  renderHandType();
+
+  const playerEv = evaluateHand(state.playerCards);
+  const oppEv = evaluateHand(opp.cards);
+  const result = compareHands(playerEv, oppEv);
+
+  opp.revealed = true;
+  addLog(`开牌！与${opp.name}摊牌`);
+
+  setTimeout(() => {
+    if (result >= 0) {
+      opp.folded = true;
+      addLog(`您的${playerEv.type}胜过${opp.name}的${oppEv.type}！`);
+      showResult('player', null, state.opponents);
+    } else {
+      addLog(`${opp.name}的${oppEv.type}胜过您的${playerEv.type}`);
+      showResult(null, opp, state.opponents);
+    }
+  }, 600);
+}
+
+// 多人时开牌摊牌
+function playerOpenAll() {
+  state.playerLooked = true;
+  state.wasOpened = true;
+  renderPlayerCards(false);
+  renderHandType();
+  state.opponents.forEach(o => { if (!o.folded) o.revealed = true; });
+  renderOpponents();
+  addLog('开牌！全员摊牌');
+  setTimeout(() => { endRound(); }, 600);
+}
+
+// ==============================
+// AI LOGIC
+// ==============================
+function runAITurns() {
+  const active = state.opponents.filter(o=>!o.folded);
+  if (active.length === 0) {
+    endRound();
+    return;
+  }
+
+  setActions([]);
+  setMessage('对手思考中...');
+
+  let delay = 600;
+  active.forEach((opp, idx) => {
+    state.aiTimeout = setTimeout(() => {
+      if (opp.folded) return;
+      aiDecide(opp);
+      renderOpponents();
+      renderPot();
+      renderTableChips();
+      addLog(`${opp.name}: ${opp.aiAction}`);
+
+      if (idx === active.length - 1) {
+        const stillIn = state.opponents.filter(o=>!o.folded);
+        if (stillIn.length === 0 && !state.playerFolded) {
+          endRound();
+        } else if (state.playerFolded) {
+          // already handled
+        } else {
+          // 所有人都未看牌且跟注满一圈，给玩家开牌或继续的选择
+          const allBlind = !state.playerLooked && stillIn.every(o=>!o.looked);
+          if (allBlind && state.betRound >= 1) {
+            setMessage('可以开牌了！');
+            updateActionButtons();
+          } else {
+            setMessage('轮到您出牌');
+            updateActionButtons();
+          }
+        }
+      }
+    }, delay + idx*700);
+  });
+}
+
+function aiDecide(opp) {
+  const ev = evaluateHand(opp.cards);
+  const rank = HAND_RANKS[ev.type];
+  const bet = opp.looked ? state.currentBet * 2 : 5;
+  let rand = Math.random();
+
+  // Count active players (player + non-folded opponents)
+  const totalActive = state.opponents.filter(o=>!o.folded).length + (state.playerFolded ? 0 : 1);
+  const potCapped = totalActive >= 3 && state.pot >= POT_CAP;
+
+  if (potCapped) {
+    opp.chips -= bet; opp.bet += bet;
+    state.pot = Math.min(state.pot + bet, POT_CAP);
+    opp.aiAction = `跟注 ${bet}`;
+    return;
+  }
+
+  // Smart-ish AI
+  if (rank >= 2) {
+    // 对子及以上全部跟注
+    if (!opp.looked && rand < 0.4) opp.looked = true;
+    const actualBet = opp.looked ? bet : 5;
+    opp.chips -= actualBet; opp.bet += actualBet;
+    state.pot = Math.min(state.pot + actualBet, totalActive >= 3 ? POT_CAP : Infinity);
+    opp.aiAction = `跟注 ${actualBet}`;
+  } else {
+    if (rand < 0.45) {
+      opp.folded = true; opp.aiAction = '弃牌';
+    } else {
+      const actualBet = opp.looked ? bet : 5;
+      opp.chips -= actualBet; opp.bet += actualBet;
+      state.pot = Math.min(state.pot + actualBet, totalActive >= 3 ? POT_CAP : Infinity);
+      opp.aiAction = `跟注 ${actualBet}`;
+    }
+  }
+}
+
+// ==============================
+// END ROUND
+// ==============================
+function endRound() {
+  // All remaining reveal and compare
+  const activePlayers = state.opponents.filter(o=>!o.folded);
+  state.opponents.forEach(o=>o.revealed=true);
+  renderOpponents();
+
+  if (activePlayers.length === 0) {
+    // Player wins
+    showResult('player', null, []);
+    return;
+  }
+
+  if (state.playerFolded) {
+    // Best AI wins
+    let winner = activePlayers[0];
+    for (let o of activePlayers.slice(1)) {
+      if (compareHands(evaluateHand(o.cards), evaluateHand(winner.cards)) > 0) winner = o;
+    }
+    showResult(null, winner, state.opponents);
+    return;
+  }
+
+  // Compare player vs all active AIs
+  const playerEv = evaluateHand(state.playerCards);
+  let winner = 'player';
+  let winnerOpp = null;
+
+  for (let o of activePlayers) {
+    const ov = evaluateHand(o.cards);
+    const r = compareHands(playerEv, ov);
+    if (r < 0) { winner='ai'; winnerOpp=o; break; }
+  }
+
+  if (winner==='player') {
+    showResult('player', null, state.opponents);
+  } else {
+    showResult(null, winnerOpp, state.opponents);
+  }
+}
+
+// ==============================
+// SHOW RESULT
+// ==============================
+function showResult(playerWins, winnerOpp, allActive) {
+  setActions([]);
+  setTurnIndicator(null);
+
+  const isWin = playerWins==='player';
+
+  // 所有参与本局的玩家（未弃牌的 + 玩家自己，用于计算额外收费人数）
+  const allPlayers = [
+    { isPlayer: true, chips: state.playerChips, folded: state.playerFolded, cards: state.playerCards },
+    ...state.opponents.map(o => ({ isPlayer: false, opp: o, chips: o.chips, folded: o.folded, cards: o.cards }))
+  ];
+  const losers = allPlayers.filter(p => !(isWin ? p.isPlayer : (!p.isPlayer && p.opp?.id === winnerOpp?.id)));
+
+  // 计算赢家牌型额外收费
+  const winnerCards = isWin ? state.playerCards : (winnerOpp?.cards || []);
+  const winnerEv = winnerCards.length === 3 ? evaluateHand(winnerCards) : null;
+  const bonusPerLoser = winnerEv?.type === '豹子' ? 50 : winnerEv?.type === '同花顺' ? 30 : 0;
+  let bonusTotal = 0;
+
+  if (bonusPerLoser > 0) {
+    losers.forEach(p => {
+      const pay = Math.min(bonusPerLoser, p.isPlayer ? state.playerChips : p.opp.chips);
+      bonusTotal += pay;
+      if (p.isPlayer) state.playerChips -= pay;
+      else { p.opp.chips -= pay; OPPONENTS.find(o=>o.id===p.opp.id).chips = p.opp.chips; }
+    });
+  }
+
+  // Update chips: 底池 + 额外收费归赢家
+  if (isWin) {
+    state.playerChips += state.pot + bonusTotal;
+  } else if (winnerOpp) {
+    winnerOpp.chips += state.pot + bonusTotal;
+    OPPONENTS.find(o=>o.id===winnerOpp.id).chips = winnerOpp.chips;
+  }
+
+  // Reveal all cards
+  state.opponents.forEach(o=>o.revealed=true);
+  renderOpponents();
+  renderPlayerCards(false);
+  renderHandType();
+  renderPot();
+
+  setTimeout(() => {
+    const overlay = document.getElementById('result-overlay');
+    overlay.classList.remove('hidden');
+
+    const playerEv = evaluateHand(state.playerCards);
+    let resultTitle, resultClass, resultDetail, resultAmount;
+
+    if (state.playerFolded && !isWin) {
+      resultTitle='您已弃牌'; resultClass='lose';
+      const bonusNote = bonusPerLoser > 0 ? ` · 另付${bonusPerLoser}（${winnerEv.type}）` : '';
+      resultDetail=`${winnerOpp?.name||'对手'} 获得底池${bonusNote}`;
+      resultAmount=`-${state.playerBet + (bonusPerLoser > 0 ? bonusPerLoser : 0)}`;
+    } else if (isWin) {
+      resultTitle='🎉 赢了！'; resultClass='win';
+      const bonusNote = bonusTotal > 0 ? ` · 额外收 ${bonusTotal}（${winnerEv.type}）` : '';
+      resultDetail=`您的 ${playerEv.type} 赢得底池${bonusNote}`;
+      resultAmount=`+${state.pot + bonusTotal}（净赚 ${state.pot + bonusTotal - state.playerBet}）`;
+      spawnCoins();
+    } else {
+      const oppEv = evaluateHand(winnerOpp.cards);
+      resultTitle='😔 输了'; resultClass='lose';
+      const bonusNote = bonusPerLoser > 0 ? ` · 另付${bonusPerLoser}（${oppEv.type}）` : '';
+      resultDetail=`${winnerOpp.name}的${oppEv.type}胜出${bonusNote}`;
+      resultAmount=`-${state.playerBet + bonusPerLoser}`;
+    }
+
+    // Build result hand cards
+    const playerHandHtml = state.playerCards.map(c => {
+      const col = suitColor(c.suit);
+      return `<div class="mini-card revealed ${col}" style="width:30px;height:44px;font-size:11px;">${c.rank}<br>${c.suit}</div>`;
+    }).join('');
+
+    // 玩家状态标签
+    const playerTag = isWin ? '👑' :
+      state.playerFolded ? '<span style="color:#ff7777;font-size:10px">弃牌</span>' :
+      state.wasOpened ? '<span style="color:#aaddff;font-size:10px">开牌</span>' : '';
+    const playerDim = state.playerFolded ? 'opacity:0.45' : '';
+    const playerTypeColor = state.playerFolded ? 'color:rgba(255,255,255,0.4)' : '';
+
+    let handsHtml = `<div class="result-hand ${isWin?'winner':''}">
+      <div class="result-hand-name">您 ${playerTag}</div>
+      <div class="result-hand-type" style="${playerTypeColor}">${state.playerFolded ? '弃牌' : playerEv.type}</div>
+      <div class="result-mini-cards" style="${playerDim}">${state.playerFolded ? '' : playerHandHtml}</div>
+    </div>`;
+
+    state.opponents.forEach(opp => {
+      const ev = evaluateHand(opp.cards);
+      const isWinner = winnerOpp && opp.id===winnerOpp.id;
+      const cardsHtml = opp.cards.map(c => {
+        const col = suitColor(c.suit);
+        return `<div class="mini-card revealed ${col}" style="width:30px;height:44px;font-size:11px;">${c.rank}<br>${c.suit}</div>`;
+      }).join('');
+      // AI 只有主动弃牌才显示弃牌标签，开牌摊牌不算弃牌
+      const oppTag = isWinner ? '👑' : opp.folded && !state.wasOpened ? '<span style="color:#ff7777;font-size:10px">弃牌</span>' : '';
+      const oppDim = opp.folded && !state.wasOpened ? 'opacity:0.45' : '';
+      const oppTypeColor = opp.folded && !state.wasOpened ? 'color:rgba(255,255,255,0.4)' : '';
+      handsHtml += `<div class="result-hand ${isWinner?'winner':''}">
+        <div class="result-hand-name">${opp.name} ${oppTag}</div>
+        <div class="result-hand-type" style="${oppTypeColor}">${ev.type}</div>
+        <div class="result-mini-cards" style="${oppDim}">${cardsHtml}</div>
+      </div>`;
+    });
+
+    overlay.innerHTML = `
+      <div class="result-box">
+        <div class="result-title ${resultClass}">${resultTitle}</div>
+        <div class="result-detail">${resultDetail}</div>
+        <div class="result-amount">${resultAmount}</div>
+      </div>
+      <div class="result-hands">${handsHtml}</div>
+      <button class="btn btn-new" onclick="startGame()" style="font-size:18px;padding:14px 40px;">再来一局</button>
+    `;
+
+    setMessage(isWin ? '🎊 恭喜获胜！' : '下次好运！');
+  }, 800);
+}
+
+// ==============================
+// COIN ANIMATION
+// ==============================
+function spawnCoins() {
+  const game = document.getElementById('game');
+  for (let i=0;i<18;i++) {
+    setTimeout(() => {
+      const coin = document.createElement('div');
+      coin.className='coin';
+      coin.textContent = ['🪙','💰','✨','🌟'][Math.floor(Math.random()*4)];
+      coin.style.left = (10+Math.random()*80)+'%';
+      coin.style.top = '-40px';
+      coin.style.animationDuration = (1.2+Math.random()*1.5)+'s';
+      game.appendChild(coin);
+      setTimeout(()=>coin.remove(), 3000);
+    }, i*80);
+  }
+}
+
+// ==============================
+// INIT
+// ==============================
+setMessage('准备好了吗？');
+</script>
+</body>
+</html>
